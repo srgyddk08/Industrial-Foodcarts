@@ -1,0 +1,540 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core helper primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'rolePreference', 'notificationsEnabled',
+          'defaultRadiusMeters', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'displayName', 'rolePreference', 'notificationsEnabled',
+          'defaultRadiusMeters', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == userId
+        && isValidId(data.userId)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.rolePreference in ['owner', 'customer']
+        && data.notificationsEnabled is bool
+        && data.defaultRadiusMeters is number && data.defaultRadiusMeters >= 250 && data.defaultRadiusMeters <= 50000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFavoriteCart(data, userId, cartId) {
+      return data.keys().hasAll(['userId', 'cartId', 'cartName', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'cartId', 'cartName', 'createdAt'])
+        && data.userId == userId
+        && data.cartId == cartId
+        && isValidId(data.userId)
+        && isValidId(data.cartId)
+        && data.cartName is string && data.cartName.size() >= 1 && data.cartName.size() <= 80
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFoodcart(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'cuisine', 'description', 'photoUrl', 'galleryUrls',
+          'isListed', 'isLive', 'preOrderEnabled', 'currentLat', 'currentLng',
+          'currentPlaceName', 'timerMinutes', 'timerExpiresAtMs', 'broadcastMessage',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'foodNationality', 'cuisine', 'description', 'photoUrl', 'galleryUrls',
+          'isListed', 'isLive', 'preOrderEnabled', 'requestsEnabled', 'currentLat', 'currentLng',
+          'currentPlaceName', 'timerMinutes', 'timerExpiresAtMs', 'broadcastMessage',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && (!('foodNationality' in data) || (data.foodNationality is string && data.foodNationality.size() <= 40))
+        && data.cuisine is string && data.cuisine.size() >= 2 && data.cuisine.size() <= 40
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 600
+        && data.photoUrl is string && data.photoUrl.size() >= 1 && data.photoUrl.size() <= 200000
+        && data.galleryUrls is list && data.galleryUrls.size() >= 1 && data.galleryUrls.size() <= 5
+        && data.galleryUrls[0] is string && data.galleryUrls[0].size() >= 1 && data.galleryUrls[0].size() <= 200000
+        && data.isListed is bool
+        && data.isLive is bool
+        && data.preOrderEnabled is bool
+        && (!('requestsEnabled' in data) || data.requestsEnabled is bool)
+        && data.currentLat is number && data.currentLat >= -90 && data.currentLat <= 90
+        && data.currentLng is number && data.currentLng >= -180 && data.currentLng <= 180
+        && data.currentPlaceName is string && data.currentPlaceName.size() <= 160
+        && data.timerMinutes is number && data.timerMinutes >= 0 && data.timerMinutes <= 720
+        && data.timerExpiresAtMs is number && data.timerExpiresAtMs >= 0
+        && data.broadcastMessage is string && data.broadcastMessage.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMenuItem(data, cartId) {
+      return data.keys().hasAll([
+          'cartId', 'ownerId', 'isPublic', 'name', 'description',
+          'priceCents', 'prepMinutes', 'available', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'ownerId', 'isPublic', 'name', 'description',
+          'priceCents', 'prepMinutes', 'available', 'createdAt', 'updatedAt'
+        ])
+        && data.cartId == cartId
+        && isValidId(data.cartId)
+        && isValidId(data.ownerId)
+        && data.isPublic is bool
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.description is string && data.description.size() <= 240
+        && data.priceCents is number && data.priceCents >= 50 && data.priceCents <= 500000
+        && data.prepMinutes is number && data.prepMinutes >= 1 && data.prepMinutes <= 120
+        && data.available is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRouteStop(data, cartId) {
+      return data.keys().hasAll([
+          'cartId', 'ownerId', 'isPublic', 'orderIndex', 'label', 'address',
+          'lat', 'lng', 'dayOfWeek', 'startTime', 'endTime', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'ownerId', 'isPublic', 'orderIndex', 'label', 'address',
+          'lat', 'lng', 'dayOfWeek', 'startTime', 'endTime', 'createdAt', 'updatedAt'
+        ])
+        && data.cartId == cartId
+        && isValidId(data.cartId)
+        && isValidId(data.ownerId)
+        && data.isPublic is bool
+        && data.orderIndex is number && data.orderIndex >= 0 && data.orderIndex <= 30
+        && data.label is string && data.label.size() >= 1 && data.label.size() <= 120
+        && data.address is string && data.address.size() >= 1 && data.address.size() <= 200
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.dayOfWeek is string && data.dayOfWeek.size() >= 1 && data.dayOfWeek.size() <= 40
+        && data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 20
+        && data.endTime is string && data.endTime.size() >= 1 && data.endTime.size() <= 20
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'cartId', 'cartName', 'ownerId', 'customerId', 'customerName',
+          'itemsSummary', 'itemCount', 'totalCents', 'pickupNote', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'cartName', 'ownerId', 'customerId', 'customerName',
+          'itemsSummary', 'itemCount', 'totalCents', 'pickupNote', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.cartId)
+        && data.cartName is string && data.cartName.size() >= 1 && data.cartName.size() <= 80
+        && isValidId(data.ownerId)
+        && isValidId(data.customerId)
+        && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80
+        && data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 500
+        && data.itemCount is number && data.itemCount >= 1 && data.itemCount <= 50
+        && data.totalCents is number && data.totalCents >= 50 && data.totalCents <= 2000000
+        && data.pickupNote is string && data.pickupNote.size() <= 200
+        && data.status in ['pending', 'preparing', 'ready', 'picked_up', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProximityAlert(data) {
+      return data.keys().hasAll([
+          'cartId', 'cartName', 'ownerId', 'isPublic', 'lat', 'lng',
+          'placeName', 'message', 'timerMinutes', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'cartName', 'ownerId', 'isPublic', 'lat', 'lng',
+          'placeName', 'message', 'timerMinutes', 'createdAt'
+        ])
+        && isValidId(data.cartId)
+        && data.cartName is string && data.cartName.size() >= 1 && data.cartName.size() <= 80
+        && isValidId(data.ownerId)
+        && data.isPublic is bool
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.placeName is string && data.placeName.size() >= 1 && data.placeName.size() <= 160
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 200
+        && data.timerMinutes is number && data.timerMinutes >= 0 && data.timerMinutes <= 720
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFoodcartTelemetry(data, cartId) {
+      return data.keys().hasAll([
+          'cartId', 'ownerId', 'isPublic', 'isStreaming', 'lat', 'lng',
+          'accuracyMeters', 'headingDeg', 'speedMps', 'placeLabel',
+          'pingCount', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'ownerId', 'isPublic', 'isStreaming', 'lat', 'lng',
+          'accuracyMeters', 'headingDeg', 'speedMps', 'placeLabel',
+          'pingCount', 'createdAt', 'updatedAt'
+        ])
+        && data.cartId == cartId
+        && isValidId(data.cartId)
+        && isValidId(data.ownerId)
+        && data.isPublic is bool
+        && data.isStreaming is bool
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.accuracyMeters is number && data.accuracyMeters >= 0 && data.accuracyMeters <= 100000
+        && data.headingDeg is number && data.headingDeg >= -1 && data.headingDeg <= 360
+        && data.speedMps is number && data.speedMps >= 0 && data.speedMps <= 200
+        && data.placeLabel is string && data.placeLabel.size() <= 160
+        && data.pingCount is number && data.pingCount >= 0 && data.pingCount <= 10000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCartLocationRequest(data) {
+      return data.keys().hasAll([
+          'cartId', 'cartName', 'ownerId', 'customerId', 'customerName',
+          'locationLabel', 'lat', 'lng', 'requestedTime', 'partySize',
+          'note', 'ownerNote', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cartId', 'cartName', 'ownerId', 'customerId', 'customerName',
+          'locationLabel', 'lat', 'lng', 'requestedTime', 'partySize',
+          'note', 'ownerNote', 'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.cartId)
+        && data.cartName is string && data.cartName.size() >= 1 && data.cartName.size() <= 80
+        && isValidId(data.ownerId)
+        && isValidId(data.customerId)
+        && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80
+        && data.locationLabel is string && data.locationLabel.size() >= 1 && data.locationLabel.size() <= 160
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.requestedTime is string && data.requestedTime.size() >= 1 && data.requestedTime.size() <= 60
+        && data.partySize is number && data.partySize >= 1 && data.partySize <= 500
+        && data.note is string && data.note.size() <= 240
+        && data.ownerNote is string && data.ownerNote.size() <= 240
+        && data.status in ['pending', 'approved', 'denied', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Users & Favorites
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(userId) && isVerified() && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isVerified() && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'rolePreference', 'notificationsEnabled', 'defaultRadiusMeters', 'updatedAt'
+        ]);
+      allow delete: if false;
+
+      match /favorites/{cartId} {
+        allow get: if isValidId(userId) && isValidId(cartId) && isOwner(userId);
+        allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(cartId) && isVerified() && isOwner(userId)
+          && isValidFavoriteCart(incoming(), userId, cartId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/foodcarts/$(cartId));
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(cartId) && isOwner(userId);
+      }
+    }
+
+    // Foodcarts
+    match /foodcarts/{cartId} {
+      allow get: if isValidId(cartId)
+        && (
+          resource == null
+          || existing().isListed == true
+          || (isSignedIn() && existing().ownerId == request.auth.uid)
+        );
+      allow list: if existing().isListed == true
+        || (isSignedIn() && existing().ownerId == request.auth.uid);
+
+      allow create: if isValidId(cartId) && isVerified()
+        && isValidFoodcart(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(cartId) && isVerified()
+        && isValidFoodcart(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Profile, Pre-order & Request Settings update
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'foodNationality', 'cuisine', 'description', 'photoUrl', 'galleryUrls', 'isListed', 'preOrderEnabled', 'requestsEnabled', 'updatedAt'
+          ])
+          ||
+          // Action 2: Live Geo-location, Timer & Proximity Broadcast update
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'isLive', 'currentLat', 'currentLng', 'currentPlaceName', 'timerMinutes', 'timerExpiresAtMs', 'broadcastMessage', 'updatedAt'
+          ])
+          ||
+          // Action 3: Quick toggle customer location requests on/off
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'requestsEnabled', 'updatedAt'
+          ])
+          ||
+          // Action 4: Full cart edit
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'foodNationality', 'cuisine', 'description', 'photoUrl', 'galleryUrls', 'isListed', 'isLive', 'preOrderEnabled', 'requestsEnabled',
+            'currentLat', 'currentLng', 'currentPlaceName', 'timerMinutes', 'timerExpiresAtMs', 'broadcastMessage', 'updatedAt'
+          ])
+        );
+
+      allow delete: if isValidId(cartId) && isVerified() && existing().ownerId == request.auth.uid;
+
+      match /menuItems/{itemId} {
+        allow get: if isValidId(cartId) && isValidId(itemId)
+          && (
+            resource == null
+            || existing().isPublic == true
+            || (isSignedIn() && existing().ownerId == request.auth.uid)
+          );
+        allow list: if existing().isPublic == true
+          || (isSignedIn() && existing().ownerId == request.auth.uid);
+
+        allow create: if isValidId(cartId) && isValidId(itemId) && isVerified()
+          && isValidMenuItem(incoming(), cartId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && get(/databases/$(database)/documents/foodcarts/$(cartId)).data.ownerId == request.auth.uid;
+
+        allow update: if isValidId(cartId) && isValidId(itemId) && isVerified()
+          && isValidMenuItem(incoming(), cartId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().cartId == existing().cartId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'isPublic', 'name', 'description', 'priceCents', 'prepMinutes', 'available', 'updatedAt'
+          ]);
+
+        allow delete: if isValidId(cartId) && isValidId(itemId) && isVerified()
+          && existing().ownerId == request.auth.uid;
+      }
+
+      match /routeStops/{stopId} {
+        allow get: if isValidId(cartId) && isValidId(stopId)
+          && (
+            resource == null
+            || existing().isPublic == true
+            || (isSignedIn() && existing().ownerId == request.auth.uid)
+          );
+        allow list: if existing().isPublic == true
+          || (isSignedIn() && existing().ownerId == request.auth.uid);
+
+        allow create: if isValidId(cartId) && isValidId(stopId) && isVerified()
+          && isValidRouteStop(incoming(), cartId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && get(/databases/$(database)/documents/foodcarts/$(cartId)).data.ownerId == request.auth.uid;
+
+        allow update: if isValidId(cartId) && isValidId(stopId) && isVerified()
+          && isValidRouteStop(incoming(), cartId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().cartId == existing().cartId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'isPublic', 'orderIndex', 'label', 'address', 'lat', 'lng', 'dayOfWeek', 'startTime', 'endTime', 'updatedAt'
+          ]);
+
+        allow delete: if isValidId(cartId) && isValidId(stopId) && isVerified()
+          && existing().ownerId == request.auth.uid;
+      }
+
+      match /telemetry/{telemetryId} {
+        allow get: if isValidId(cartId) && isValidId(telemetryId)
+          && (
+            resource == null
+            || existing().isPublic == true
+            || (isSignedIn() && existing().ownerId == request.auth.uid)
+          );
+        allow list: if existing().isPublic == true
+          || (isSignedIn() && existing().ownerId == request.auth.uid);
+
+        allow create: if isValidId(cartId) && isValidId(telemetryId) && isVerified()
+          && isValidFoodcartTelemetry(incoming(), cartId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && get(/databases/$(database)/documents/foodcarts/$(cartId)).data.ownerId == request.auth.uid;
+
+        allow update: if isValidId(cartId) && isValidId(telemetryId) && isVerified()
+          && isValidFoodcartTelemetry(incoming(), cartId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().cartId == existing().cartId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'isPublic', 'isStreaming', 'lat', 'lng', 'accuracyMeters', 'headingDeg', 'speedMps', 'placeLabel', 'pingCount', 'updatedAt'
+          ]);
+
+        allow delete: if isValidId(cartId) && isValidId(telemetryId) && isVerified()
+          && existing().ownerId == request.auth.uid;
+      }
+    }
+
+    // Pre-Orders
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isSignedIn()
+        && (existing().customerId == request.auth.uid || existing().ownerId == request.auth.uid);
+      allow list: if isSignedIn()
+        && (existing().customerId == request.auth.uid || existing().ownerId == request.auth.uid);
+
+      allow create: if isValidId(orderId) && isVerified()
+        && isValidOrder(incoming())
+        && incoming().customerId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.ownerId == incoming().ownerId
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.isListed == true
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.preOrderEnabled == true;
+
+      allow update: if isValidId(orderId) && isVerified()
+        && isValidOrder(incoming())
+        && existing().status != 'picked_up'
+        && existing().status != 'cancelled'
+        && incoming().cartId == existing().cartId
+        && incoming().cartName == existing().cartName
+        && incoming().ownerId == existing().ownerId
+        && incoming().customerId == existing().customerId
+        && incoming().customerName == existing().customerName
+        && incoming().itemsSummary == existing().itemsSummary
+        && incoming().itemCount == existing().itemCount
+        && incoming().totalCents == existing().totalCents
+        && incoming().pickupNote == existing().pickupNote
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && (
+          // Owner advancing order status
+          (existing().ownerId == request.auth.uid && incoming().status in ['preparing', 'ready', 'picked_up', 'cancelled'])
+          ||
+          // Customer cancelling a pending order
+          (existing().customerId == request.auth.uid && existing().status == 'pending' && incoming().status == 'cancelled')
+        );
+
+      allow delete: if false;
+    }
+
+    // Customer Foodcart Location Requests
+    match /cartRequests/{requestId} {
+      allow get: if isValidId(requestId) && isSignedIn()
+        && (existing().customerId == request.auth.uid || existing().ownerId == request.auth.uid);
+      allow list: if isSignedIn()
+        && (existing().customerId == request.auth.uid || existing().ownerId == request.auth.uid);
+
+      allow create: if isValidId(requestId) && isVerified()
+        && isValidCartLocationRequest(incoming())
+        && incoming().customerId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().ownerNote == ''
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.ownerId == incoming().ownerId
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.isListed == true
+        && (
+          !('requestsEnabled' in get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data)
+          || get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.requestsEnabled == true
+        );
+
+      allow update: if isValidId(requestId) && isVerified()
+        && isValidCartLocationRequest(incoming())
+        && existing().status == 'pending'
+        && incoming().cartId == existing().cartId
+        && incoming().cartName == existing().cartName
+        && incoming().ownerId == existing().ownerId
+        && incoming().customerId == existing().customerId
+        && incoming().customerName == existing().customerName
+        && incoming().locationLabel == existing().locationLabel
+        && incoming().lat == existing().lat
+        && incoming().lng == existing().lng
+        && incoming().requestedTime == existing().requestedTime
+        && incoming().partySize == existing().partySize
+        && incoming().note == existing().note
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Owner approves or denies location request
+          (
+            existing().ownerId == request.auth.uid
+            && incoming().status in ['approved', 'denied']
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'ownerNote', 'updatedAt'])
+          )
+          ||
+          // Action 2: Customer cancels a pending location request
+          (
+            existing().customerId == request.auth.uid
+            && incoming().status == 'cancelled'
+            && incoming().ownerNote == existing().ownerNote
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // Proximity Push Notification Alerts
+    match /proximityAlerts/{alertId} {
+      allow get: if isValidId(alertId) && existing().isPublic == true;
+      allow list: if existing().isPublic == true;
+
+      allow create: if isValidId(alertId) && isVerified()
+        && isValidProximityAlert(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().isPublic == true
+        && incoming().createdAt == request.time
+        && get(/databases/$(database)/documents/foodcarts/$(incoming().cartId)).data.ownerId == request.auth.uid;
+
+      allow update: if false;
+      allow delete: if isValidId(alertId) && isVerified() && existing().ownerId == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,617 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user preferences for Industrial Foodcarts.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "rolePreference": {
+          "type": "string",
+          "enum": ["owner", "customer"]
+        },
+        "notificationsEnabled": {
+          "type": "boolean"
+        },
+        "defaultRadiusMeters": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "displayName", "rolePreference", "notificationsEnabled", "defaultRadiusMeters", "createdAt", "updatedAt"]
+    },
+    "FavoriteCart": {
+      "title": "FavoriteCart",
+      "description": "A customer's saved favorite foodcart reference.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "cartName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "cartId", "cartName", "createdAt"]
+    },
+    "Foodcart": {
+      "title": "Foodcart",
+      "description": "Vendor foodcart profile, live geolocation, stop timer, and pre-order configuration.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "foodNationality": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "cuisine": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "photoUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200000
+        },
+        "galleryUrls": {
+          "type": "array"
+        },
+        "isListed": {
+          "type": "boolean"
+        },
+        "isLive": {
+          "type": "boolean"
+        },
+        "preOrderEnabled": {
+          "type": "boolean"
+        },
+        "requestsEnabled": {
+          "type": "boolean"
+        },
+        "currentLat": {
+          "type": "number"
+        },
+        "currentLng": {
+          "type": "number"
+        },
+        "currentPlaceName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "timerMinutes": {
+          "type": "number"
+        },
+        "timerExpiresAtMs": {
+          "type": "number"
+        },
+        "broadcastMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "cuisine",
+        "description",
+        "photoUrl",
+        "galleryUrls",
+        "isListed",
+        "isLive",
+        "preOrderEnabled",
+        "currentLat",
+        "currentLng",
+        "currentPlaceName",
+        "timerMinutes",
+        "timerExpiresAtMs",
+        "broadcastMessage",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "Pre-order menu item belonging to a foodcart.",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "priceCents": {
+          "type": "number"
+        },
+        "prepMinutes": {
+          "type": "number"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["cartId", "ownerId", "isPublic", "name", "description", "priceCents", "prepMinutes", "available", "createdAt", "updatedAt"]
+    },
+    "RouteStop": {
+      "title": "RouteStop",
+      "description": "Scheduled route stop with coordinates and arrival/departure window for a foodcart.",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "orderIndex": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "dayOfWeek": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "startTime": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "endTime": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["cartId", "ownerId", "isPublic", "orderIndex", "label", "address", "lat", "lng", "dayOfWeek", "startTime", "endTime", "createdAt", "updatedAt"]
+    },
+    "PreOrder": {
+      "title": "PreOrder",
+      "description": "Customer pre-order placed against a foodcart.",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "cartName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "itemsSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "itemCount": {
+          "type": "number"
+        },
+        "totalCents": {
+          "type": "number"
+        },
+        "pickupNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "preparing", "ready", "picked_up", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "cartId",
+        "cartName",
+        "ownerId",
+        "customerId",
+        "customerName",
+        "itemsSummary",
+        "itemCount",
+        "totalCents",
+        "pickupNote",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ProximityAlert": {
+      "title": "ProximityAlert",
+      "description": "Real-time proximity push notification event broadcast when a vendor activates or updates a stop.",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "cartName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "placeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "timerMinutes": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["cartId", "cartName", "ownerId", "isPublic", "lat", "lng", "placeName", "message", "timerMinutes", "createdAt"]
+    },
+    "FoodcartTelemetry": {
+      "title": "FoodcartTelemetry",
+      "description": "Real-time GPS telemetry stream for an active foodcart (coordinates, accuracy, speed, heading).",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "isStreaming": {
+          "type": "boolean"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "accuracyMeters": {
+          "type": "number"
+        },
+        "headingDeg": {
+          "type": "number"
+        },
+        "speedMps": {
+          "type": "number"
+        },
+        "placeLabel": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "pingCount": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "cartId",
+        "ownerId",
+        "isPublic",
+        "isStreaming",
+        "lat",
+        "lng",
+        "accuracyMeters",
+        "headingDeg",
+        "speedMps",
+        "placeLabel",
+        "pingCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CartLocationRequest": {
+      "title": "CartLocationRequest",
+      "description": "Customer request asking a foodcart vendor to park at a specific location and time.",
+      "type": "object",
+      "properties": {
+        "cartId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "cartName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "locationLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "requestedTime": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "partySize": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "ownerNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "denied", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "cartId",
+        "cartName",
+        "ownerId",
+        "customerId",
+        "customerName",
+        "locationLabel",
+        "lat",
+        "lng",
+        "requestedTime",
+        "partySize",
+        "note",
+        "ownerNote",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user settings and role preference."
+    },
+    "/users/{userId}/favorites/{cartId}": {
+      "schema": { "$ref": "#/entities/FavoriteCart" },
+      "description": "Customer favorite foodcarts."
+    },
+    "/foodcarts/{cartId}": {
+      "schema": { "$ref": "#/entities/Foodcart" },
+      "description": "Foodcart vendor profiles, live locations, and stop timers."
+    },
+    "/foodcarts/{cartId}/menuItems/{itemId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Foodcart pre-order menu items."
+    },
+    "/foodcarts/{cartId}/routeStops/{stopId}": {
+      "schema": { "$ref": "#/entities/RouteStop" },
+      "description": "Foodcart scheduled route stops."
+    },
+    "/foodcarts/{cartId}/telemetry/{telemetryId}": {
+      "schema": { "$ref": "#/entities/FoodcartTelemetry" },
+      "description": "Real-time GPS telemetry stream for a foodcart."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/PreOrder" },
+      "description": "Customer pre-orders for foodcarts."
+    },
+    "/cartRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/CartLocationRequest" },
+      "description": "Customer location stop requests for foodcarts."
+    },
+    "/proximityAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/ProximityAlert" },
+      "description": "Vendor live-stop proximity push broadcast events."
+    }
+  }
+}

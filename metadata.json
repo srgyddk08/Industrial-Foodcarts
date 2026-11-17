@@ -1,0 +1,10 @@
+{
+  "name": "Industrial Foodcarts",
+  "description": "Real-time geo-location, stop timers, route schedules, pre-orders, and proximity push notifications for mobile foodcarts and local customers.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
